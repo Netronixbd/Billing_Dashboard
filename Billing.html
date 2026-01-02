@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Dashboard | Amir Hosan Jesan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f0f4f8; color: #1e293b; }
+        .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04); }
+        .header-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+        .bw-badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; }
+        .animate-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <header class="header-gradient text-white pt-10 pb-24 px-6 relative overflow-hidden">
+        <div class="container mx-auto relative z-10 flex flex-col md:flex-row justify-between items-center">
+            <div class="text-center md:text-left">
+                <h1 class="text-4xl font-extrabold tracking-tighter italic">BILLING <span class="text-indigo-400 font-black">PRO</span></h1>
+                <p class="text-indigo-200 text-xs uppercase tracking-[6px] mt-1 font-semibold opacity-80">ISP Inventory Management</p>
+            </div>
+            <div class="mt-6 md:mt-0 flex gap-4 items-center">
+                <div class="bg-indigo-500/20 px-5 py-2 rounded-2xl border border-indigo-400/30 text-sm font-bold tracking-wider">
+                    <span id="liveTime"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 -mt-16 relative z-20">
+        
+        <section class="glass p-8 md:p-10 rounded-[2.5rem] animate-in mb-10 shadow-2xl">
+            <div class="flex items-center mb-8">
+                <div class="w-12 h-12 header-gradient rounded-xl flex items-center justify-center mr-4 shadow-lg text-white">
+                    <i class="fas fa-plus text-xl"></i>
+                </div>
+                <h2 id="formTitle" class="text-2xl font-black text-slate-800">New Connection Entry</h2>
+            </div>
+
+            <form id="billingForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer Name *</label>
+                    <input type="text" id="custName" class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">NTTN Network *</label>
+                    <select id="nttnName" class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white" required>
+                        <option value="">Select Network</option>
+                        <option value="SCL">SCL</option>
+                        <option value="Fiber@Home">Fiber@Home</option>
+                        <option value="Bahon">Bahon</option>
+                        <option value="Overhead">Overhead</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">NTTN Capacity (Mb) *</label>
+                    <input type="number" id="nttnCapacity" class="w-full border border-indigo-100 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm bg-indigo-50/30" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">VLAN Range</label>
+                    <input type="text" id="vlanRange" class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="e.g. 100-200">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Link ID (Optional)</label>
+                    <input type="text" id="linkId" class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                </div>
+
+                <div class="lg:col-span-4 grid grid-cols-3 md:grid-cols-6 gap-3 bg-white p-4 rounded-2xl border-2 border-dashed border-slate-100 shadow-inner">
+                    <input type="number" id="iptBw" class="bg-slate-50 p-2 rounded-lg outline-none text-center text-sm font-bold" placeholder="IPT">
+                    <input type="number" id="ggcBw" class="bg-slate-50 p-2 rounded-lg outline-none text-center text-sm font-bold" placeholder="GGC">
+                    <input type="number" id="fnaBw" class="bg-slate-50 p-2 rounded-lg outline-none text-center text-sm font-bold" placeholder="FNA">
+                    <input type="number" id="bdixBw" class="bg-slate-50 p-2 rounded-lg outline-none text-center text-sm font-bold" placeholder="BDIX">
+                    <input type="number" id="cdnBw" class="bg-slate-50 p-2 rounded-lg outline-none text-center text-sm font-bold" placeholder="CDN">
+                    <input type="number" id="bcdnBw" class="bg-slate-50 p-2 rounded-lg outline-none text-center text-sm font-bold" placeholder="BCDN">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Others Remarks</label>
+                    <input type="text" id="othersBw" class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button type="submit" id="submitBtn" class="flex-1 header-gradient text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all">Save Record</button>
+                    <button type="button" id="cancelBtn" class="hidden bg-slate-400 text-white font-bold py-3 px-4 rounded-xl">Cancel</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="glass rounded-[2.5rem] overflow-hidden animate-in shadow-2xl border-0">
+            <div class="bg-white/70 p-6 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-100">
+                <div class="relative w-full md:w-1/3">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchBox" onkeyup="searchCustomer()" placeholder="Search Name, ID or NTTN..." class="w-full pl-11 pr-4 py-2 bg-slate-100/50 rounded-full outline-none focus:ring-2 focus:ring-indigo-300 transition-all text-sm">
+                </div>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <button onclick="exportToCSV()" class="flex-1 md:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-full text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </button>
+                    <div class="bg-indigo-600 text-white px-5 py-2 rounded-full text-[10px] font-black flex items-center">
+                        TOTAL: <span id="clientCount" class="ml-1">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto p-4">
+                <table class="w-full text-left border-separate border-spacing-y-4" id="dataTable">
+                    <thead>
+                        <tr class="text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                            <th class="px-6">Customer / NTTN</th>
+                            <th class="px-6">VLAN / Link ID</th>
+                            <th class="px-6 text-center">Breakdowns (Mb)</th>
+                            <th class="px-6 text-center">Total (Mb)</th>
+                            <th class="px-6 text-center">Audit Time</th>
+                            <th class="px-6 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-20 py-10 bg-white border-t border-slate-100 text-center">
+        <div class="inline-block bg-indigo-50 px-8 py-4 rounded-3xl border border-indigo-100 hover:border-indigo-400 transition-all duration-500">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[4px] mb-1">System Management Dashboard</p>
+            <p class="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-indigo-900">
+                Powered by Amir Hosan Jesan
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        let billingData = JSON.parse(localStorage.getItem('jesan_pro_db_final')) || [];
+        let editMode = false, currentEditIndex = null;
+
+        setInterval(() => { document.getElementById('liveTime').innerText = new Date().toLocaleString(); }, 1000);
+
+        const form = document.getElementById('billingForm'), tableBody = document.getElementById('tableBody');
+        const submitBtn = document.getElementById('submitBtn'), cancelBtn = document.getElementById('cancelBtn');
+
+        function saveData() { localStorage.setItem('jesan_pro_db_final', JSON.stringify(billingData)); renderTable(); }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const now = new Date();
+            const updateTime = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const record = {
+                name: document.getElementById('custName').value, nttn: document.getElementById('nttnName').value,
+                capacity: document.getElementById('nttnCapacity').value || 0, vlan: document.getElementById('vlanRange').value || 'N/A',
+                linkId: document.getElementById('linkId').value || 'N/A', iptBw: parseFloat(document.getElementById('iptBw').value) || 0,
+                ggcBw: parseFloat(document.getElementById('ggcBw').value) || 0, fnaBw: parseFloat(document.getElementById('fnaBw').value) || 0,
+                bdixBw: parseFloat(document.getElementById('bdixBw').value) || 0, cdnBw: parseFloat(document.getElementById('cdnBw').value) || 0,
+                bcdnBw: parseFloat(document.getElementById('bcdnBw').value) || 0, othersBw: document.getElementById('othersBw').value || 'None',
+                lastUpdated: updateTime
+            };
+
+            if (editMode) billingData[currentEditIndex] = record;
+            else billingData.push(record);
+
+            resetForm(); saveData(); form.reset();
+        });
+
+        function renderTable(filterData = billingData) {
+            tableBody.innerHTML = '';
+            document.getElementById('clientCount').innerText = filterData.length;
+            filterData.forEach((data, index) => {
+                const total = data.iptBw + data.ggcBw + data.fnaBw + data.bdixBw + data.cdnBw + data.bcdnBw;
+                const row = document.createElement('tr');
+                row.className = "bg-white hover:bg-indigo-50/50 transition-all rounded-3xl shadow-sm";
+                row.innerHTML = `
+                    <td class="px-6 py-5 rounded-l-3xl">
+                        <div class="font-bold text-slate-800">${data.name}</div>
+                        <div class="text-[9px] text-indigo-500 font-bold uppercase">${data.nttn} (${data.capacity}M)</div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="text-xs font-bold text-slate-600">V: ${data.vlan}</div>
+                        <div class="text-[10px] text-slate-400 font-mono italic">#${data.linkId}</div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="flex gap-1 justify-center flex-wrap max-w-[280px] mx-auto">
+                            <span class="bw-badge bg-blue-50 text-blue-600">IPT: ${data.iptBw}</span>
+                            <span class="bw-badge bg-red-50 text-red-600">GGC: ${data.ggcBw}</span>
+                            <span class="bw-badge bg-emerald-50 text-emerald-600">BDIX: ${data.bdixBw}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                        <div class="bg-slate-900 text-white px-3 py-1 rounded-xl font-black text-xs shadow-md inline-block">${total} Mb</div>
+                    </td>
+                    <td class="px-6 py-5 text-center text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                        Edited:<br><span class="text-indigo-600">${data.lastUpdated}</span>
+                    </td>
+                    <td class="px-6 py-5 text-center rounded-r-3xl">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="editRecord(${index})" class="text-indigo-600 p-2 hover:bg-indigo-100 rounded-lg"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteRecord(${index})" class="text-red-400 p-2 hover:bg-red-50 rounded-lg"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function searchCustomer() {
+            const term = document.getElementById('searchBox').value.toLowerCase();
+            const filtered = billingData.filter(d => 
+                d.name.toLowerCase().includes(term) || d.nttn.toLowerCase().includes(term) || d.linkId.toLowerCase().includes(term)
+            );
+            renderTable(filtered);
+        }
+
+        function exportToCSV() {
+            let csv = "Customer Name,NTTN,Capacity,VLAN,Link ID,IPT,GGC,FNA,BDIX,CDN,BCDN,Total BW,Last Updated\n";
+            billingData.forEach(d => {
+                const total = d.iptBw + d.ggcBw + d.fnaBw + d.bdixBw + d.cdnBw + d.bcdnBw;
+                csv += `${d.name},${d.nttn},${d.capacity},${d.vlan},${d.linkId},${d.iptBw},${d.ggcBw},${d.fnaBw},${d.bdixBw},${d.cdnBw},${d.bcdnBw},${total},${d.lastUpdated}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `ISP_Billing_${new Date().toLocaleDateString()}.csv`);
+            a.click();
+        }
+
+        function editRecord(index) {
+            const d = billingData[index];
+            document.getElementById('custName').value = d.name; document.getElementById('nttnName').value = d.nttn;
+            document.getElementById('nttnCapacity').value = d.capacity; document.getElementById('vlanRange').value = d.vlan;
+            document.getElementById('linkId').value = d.linkId; document.getElementById('iptBw').value = d.iptBw;
+            document.getElementById('ggcBw').value = d.ggcBw; document.getElementById('fnaBw').value = d.fnaBw;
+            document.getElementById('bdixBw').value = d.bdixBw; document.getElementById('cdnBw').value = d.cdnBw;
+            document.getElementById('bcdnBw').value = d.bcdnBw; document.getElementById('othersBw').value = d.othersBw;
+            editMode = true; currentEditIndex = index;
+            submitBtn.innerText = "Update Now"; submitBtn.classList.replace('header-gradient', 'bg-emerald-600');
+            cancelBtn.classList.remove('hidden'); window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function deleteRecord(index) { if(confirm("Permanently delete?")) { billingData.splice(index, 1); saveData(); } }
+        function resetForm() { editMode = false; submitBtn.innerText = "Save Record"; submitBtn.classList.replace('bg-emerald-600', 'header-gradient'); cancelBtn.classList.add('hidden'); }
+        renderTable();
+    </script>
+</body>
+</html>
