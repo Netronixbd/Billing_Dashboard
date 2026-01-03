@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ops Provisioning Pro | v2.8 Ultimate</title>
+    <title>Ops Provisioning Pro | v2.9 Secure</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -110,14 +110,7 @@
                 <div class="md:col-span-3">
                     <select id="serviceTypeFilter" onchange="filterDatabase()" class="w-full bg-white px-6 py-4 rounded-2xl shadow-sm border-none font-bold text-indigo-600 text-xs uppercase cursor-pointer">
                         <option value="all">All Service Types</option>
-                        <option value="IPT">IPT</option>
-                        <option value="GGC">GGC</option>
-                        <option value="FNA">FNA</option>
-                        <option value="BDIX">BDIX</option>
-                        <option value="CDN">CDN</option>
-                        <option value="AKAMAI">AKAMAI</option>
-                        <option value="PNI">PNI</option>
-                        <option value="BCDN">BCDN</option>
+                        <option value="IPT">IPT</option><option value="GGC">GGC</option><option value="FNA">FNA</option><option value="BDIX">BDIX</option><option value="CDN">CDN</option><option value="AKAMAI">AKAMAI</option><option value="PNI">PNI</option><option value="BCDN">BCDN</option>
                     </select>
                 </div>
             </div>
@@ -150,7 +143,7 @@
                 <section class="glass-panel p-8 border-2 border-emerald-100">
                     <h3 class="text-xl font-black text-emerald-600 uppercase mb-6 flex items-center gap-3"><i class="fas fa-user-tie"></i> Engineer Management</h3>
                     <div class="flex gap-4 mb-6">
-                        <input type="text" id="newEngName" placeholder="Engineer Name (e.g. MR. X)" class="flex-1 p-3 rounded-xl shadow-sm">
+                        <input type="text" id="newEngName" placeholder="Engineer Name" class="flex-1 p-3 rounded-xl shadow-sm">
                         <button onclick="addEngineer()" class="bg-emerald-600 text-white px-6 rounded-xl font-bold uppercase text-xs">Add Engineer</button>
                     </div>
                     <div id="engineerList" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
@@ -189,13 +182,22 @@
         function logout() { location.reload(); }
 
         function initSystem() {
-            document.getElementById('userStatus').innerText = `Logged in as: ${currentUser.uname}`;
-            if(currentUser.role === 'read') document.getElementById('formSection').classList.add('hidden');
-            if(currentUser.role === 'super') { 
+            document.getElementById('userStatus').innerText = `Logged in as: ${currentUser.uname} (${currentUser.role})`;
+            
+            // STRICT ROLE ACCESS CONTROL
+            if(currentUser.role === 'read') {
+                document.getElementById('formSection').classList.add('hidden');
+                document.getElementById('superAdminSection').classList.add('hidden');
+            } else if(currentUser.role === 'super') { 
                 document.getElementById('superAdminSection').classList.remove('hidden'); 
+                document.getElementById('formSection').classList.remove('hidden');
                 renderUserList(); 
                 renderEngineerList();
+            } else {
+                document.getElementById('formSection').classList.remove('hidden');
+                document.getElementById('superAdminSection').classList.add('hidden');
             }
+
             renderEngineerSelect();
             const grid = document.getElementById('serviceGrid');
             grid.innerHTML = services.map(s => `
@@ -230,6 +232,7 @@
         }
 
         function addEngineer() {
+            if(currentUser.role === 'read') return;
             const name = document.getElementById('newEngName').value.trim();
             if(!name) return alert("Enter name");
             engineers.push(name);
@@ -240,6 +243,7 @@
         }
 
         function deleteEngineer(index) {
+            if(currentUser.role === 'read') return;
             if(confirm("Remove this engineer?")) {
                 engineers.splice(index, 1);
                 localStorage.setItem('ops_engineers', JSON.stringify(engineers));
@@ -255,6 +259,7 @@
 
         document.getElementById('multiServiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
+            if(currentUser.role === 'read') return;
             const selectedServices = [];
             let validationError = false;
             services.forEach(s => {
@@ -313,26 +318,25 @@
             const filtered = db.filter(x => {
                 const matchesSearch = x.name.toLowerCase().includes(term);
                 const isExpired = (x.expiry - now) <= 0 && !x.resolved;
-                
-                // Status Filter Logic
                 let matchesStatus = true;
                 if (status === 'active') matchesStatus = !x.resolved && !isExpired;
                 else if (status === 'expired') matchesStatus = isExpired;
                 else if (status === 'completed') matchesStatus = x.resolved;
-
-                // Service Type Filter Logic
-                let matchesService = true;
-                if (sType !== 'all') {
-                    matchesService = x.services.some(s => s.name === sType);
-                }
-
+                let matchesService = sType === 'all' ? true : x.services.some(s => s.name === sType);
                 return matchesSearch && matchesStatus && matchesService;
             });
 
             tbody.innerHTML = filtered.map((d, i) => {
                 const timeLeft = d.expiry - now;
                 const isExpired = timeLeft <= 0;
-                return `<tr class="${d.resolved ? 'opacity-50 bg-slate-50' : (isExpired ? 'alarm-row' : '')}"><td class="px-6 py-5"><div class="font-bold text-slate-800">${d.name}</div><div class="text-[10px] text-slate-400 uppercase font-black">${d.engineer}</div></td><td class="px-6 py-5"><div class="flex flex-wrap gap-1">${d.services.map(s => `<div class="flex items-center gap-1 bg-white border border-slate-100 rounded-lg px-2 py-1 shadow-sm"><span class="text-[9px] font-bold text-indigo-600">${s.name}</span><span class="w-1 h-1 bg-slate-200 rounded-full"></span><span class="text-[9px] font-black ${s.mode === 'Uncap' ? 'text-emerald-500' : 'text-amber-500'} uppercase">${s.mode}</span></div>`).join('')}</div></td><td class="px-6 py-5 text-center">${d.resolved ? `<div class="flex flex-col"><span class="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[10px] font-black">COMPLETED</span><span class="text-[8px] text-slate-400 mt-1 uppercase">BY: ${d.resolvedBy || 'N/A'}</span></div>` : `<div class="font-mono font-bold text-sm ${isExpired ? 'text-rose-600' : 'text-indigo-600'}">${isExpired ? 'EXPIRED' : formatTime(timeLeft)}</div>`}</td><td class="px-6 py-5 text-center flex justify-center gap-2"><button onclick="viewDetails(${d.id})" class="text-indigo-500 hover:bg-indigo-50 p-2 rounded-xl"><i class="fas fa-eye"></i></button>${currentUser.role !== 'read' ? `<button onclick="promptRollback(${d.id})" class="${d.resolved ? 'text-emerald-500' : 'text-slate-400'} hover:bg-slate-50 p-2 rounded-xl"><i class="fas fa-check-circle"></i></button><button onclick="deleteEntry(${d.id})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`;
+                
+                // ACTION BUTTONS CONDITION
+                const actionButtons = currentUser.role !== 'read' ? `
+                    <button onclick="promptRollback(${d.id})" class="${d.resolved ? 'text-emerald-500' : 'text-slate-400'} hover:bg-slate-50 p-2 rounded-xl"><i class="fas fa-check-circle"></i></button>
+                    <button onclick="deleteEntry(${d.id})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fas fa-trash"></i></button>
+                ` : '';
+
+                return `<tr class="${d.resolved ? 'opacity-50 bg-slate-50' : (isExpired ? 'alarm-row' : '')}"><td class="px-6 py-5"><div class="font-bold text-slate-800">${d.name}</div><div class="text-[10px] text-slate-400 uppercase font-black">${d.engineer}</div></td><td class="px-6 py-5"><div class="flex flex-wrap gap-1">${d.services.map(s => `<div class="flex items-center gap-1 bg-white border border-slate-100 rounded-lg px-2 py-1 shadow-sm"><span class="text-[9px] font-bold text-indigo-600">${s.name}</span><span class="w-1 h-1 bg-slate-200 rounded-full"></span><span class="text-[9px] font-black ${s.mode === 'Uncap' ? 'text-emerald-500' : 'text-amber-500'} uppercase">${s.mode}</span></div>`).join('')}</div></td><td class="px-6 py-5 text-center">${d.resolved ? `<div class="flex flex-col"><span class="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[10px] font-black">COMPLETED</span><span class="text-[8px] text-slate-400 mt-1 uppercase">BY: ${d.resolvedBy || 'N/A'}</span></div>` : `<div class="font-mono font-bold text-sm ${isExpired ? 'text-rose-600' : 'text-indigo-600'}">${isExpired ? 'EXPIRED' : formatTime(timeLeft)}</div>`}</td><td class="px-6 py-5 text-center flex justify-center gap-2"><button onclick="viewDetails(${d.id})" class="text-indigo-500 hover:bg-indigo-50 p-2 rounded-xl"><i class="fas fa-eye"></i></button>${actionButtons}</td></tr>`;
             }).join('');
         }
 
@@ -367,15 +371,11 @@
                     <div class="space-y-2">
                         ${d.services.map(s => `
                             <div class="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                                <div>
-                                    <span class="text-xs font-black text-slate-800 uppercase">${s.name}</span>
-                                    <span class="ml-2 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-bold uppercase">${s.mode}</span>
-                                </div>
+                                <div><span class="text-xs font-black text-slate-800 uppercase">${s.name}</span><span class="ml-2 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-bold uppercase">${s.mode}</span></div>
                                 <div class="text-right">
                                     ${s.mode === 'Uncap' ? `<span class="text-xs font-black text-emerald-500 uppercase tracking-tighter">Unlimited Upgrade</span>` : `<span class="text-[10px] font-bold text-slate-400">Modified: <b class="text-amber-500">${s.pur}M</b> → <b class="text-indigo-600">${s.mod}M</b></span>`}
                                 </div>
-                            </div>
-                        `).join('')}
+                            </div>`).join('')}
                     </div>
                 </div>
                 ${d.reason ? `<div class="mt-4 p-4 bg-slate-900 text-white rounded-2xl"><p class="text-[10px] uppercase font-bold opacity-50 mb-1">Reference / Note</p><p class="text-xs font-medium leading-relaxed">${d.reason}</p></div>` : ''}`;
@@ -383,12 +383,13 @@
         }
 
         function promptRollback(id) {
+            if(currentUser.role === 'read') return;
             const entry = db.find(x => x.id === id);
             document.getElementById('modalTitle').innerText = entry.resolved ? "Re-activate Rule?" : "Confirm Rollback";
             document.getElementById('modalContent').innerHTML = `
                 <div class="p-6 bg-amber-50 rounded-3xl border border-amber-100 text-center">
                     <i class="fas fa-exclamation-triangle text-4xl text-amber-500 mb-4"></i>
-                    <p class="text-sm font-bold text-slate-700 mb-4">Are you sure you want to ${entry.resolved ? 'RE-ACTIVATE' : 'ROLLBACK'} this provisioning for <b>${entry.name}</b>?</p>
+                    <p class="text-sm font-bold text-slate-700 mb-4">Are you sure you want to perform this action for <b>${entry.name}</b>?</p>
                     <div class="text-left">
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Executing Rollback Engineer *</label>
                         <select id="rollbackEng" class="w-full rounded-xl p-4 mt-1 engineer-select shadow-sm" required>
@@ -403,6 +404,7 @@
         }
 
         function executeToggle(id) {
+            if(currentUser.role === 'read') return;
             const eng = document.getElementById('rollbackEng').value;
             if(!eng) return alert("Engineer Name is mandatory!");
             const entry = db.find(x => x.id === id);
@@ -414,6 +416,7 @@
         }
 
         function deleteEntry(id) { 
+            if(currentUser.role === 'read') return;
             if(confirm("Confirm deletion?")) { 
                 const entry = db.find(x => x.id === id);
                 auditLogs.unshift({ action: 'Record Deleted', client: entry.name, user: currentUser.uname, time: new Date().toLocaleString() });
@@ -434,9 +437,14 @@
         function clearLogs() { if(confirm("Wipe logs?")) { auditLogs = []; saveAndRender(); showAuditLogs(); } }
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
         function updateNotifications() { const count = db.filter(x => !x.resolved && (x.expiry - new Date().getTime()) <= 0).length; document.getElementById('expiredCount').innerText = count; }
-        function renderUserList() { document.getElementById('userList').innerHTML = appUsers.map((u, i) => `<div class="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm"><span><b>${u.uname}</b> (${u.role})</span>${u.role !== 'super' ? `<button onclick="deleteUser(${i})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-lg"><i class="fas fa-trash"></i></button>` : '<i class="fas fa-shield-alt text-indigo-400"></i>'}</div>`).join(''); }
+        
+        function renderUserList() { 
+            if(currentUser.role !== 'super') return;
+            document.getElementById('userList').innerHTML = appUsers.map((u, i) => `<div class="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm"><span><b>${u.uname}</b> (${u.role})</span>${u.role !== 'super' ? `<button onclick="deleteUser(${i})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-lg"><i class="fas fa-trash"></i></button>` : '<i class="fas fa-shield-alt text-indigo-400"></i>'}</div>`).join(''); 
+        }
         
         function deleteUser(index) {
+            if(currentUser.role !== 'super') return;
             if(confirm("Remove user?")) {
                 appUsers.splice(index, 1);
                 localStorage.setItem('ops_app_users', JSON.stringify(appUsers));
@@ -444,7 +452,17 @@
             }
         }
 
-        function addUser() { const u = document.getElementById('newUname').value, p = document.getElementById('newPass').value, r = document.getElementById('newRole').value; if(!u || !p) return alert("Missing fields"); appUsers.push({ uname: u, pass: p, role: r }); localStorage.setItem('ops_app_users', JSON.stringify(appUsers)); renderUserList(); document.getElementById('newUname').value = ''; document.getElementById('newPass').value = ''; }
+        function addUser() { 
+            if(currentUser.role !== 'super') return;
+            const u = document.getElementById('newUname').value, p = document.getElementById('newPass').value, r = document.getElementById('newRole').value; 
+            if(!u || !p) return alert("Missing fields"); 
+            appUsers.push({ uname: u, pass: p, role: r }); 
+            localStorage.setItem('ops_app_users', JSON.stringify(appUsers)); 
+            renderUserList(); 
+            document.getElementById('newUname').value = ''; 
+            document.getElementById('newPass').value = ''; 
+        }
+
         function checkOthers(val) { document.getElementById('othersInput').classList.toggle('hidden', val !== 'Others'); }
         setInterval(() => { if(currentUser) { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); filterDatabase(); } }, 1000);
     </script>
