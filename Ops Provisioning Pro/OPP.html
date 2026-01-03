@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ops Provisioning Pro | v2.9 Secure</title>
+    <title>Ops Provisioning Pro | v3.0 Master Sort</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -183,8 +183,6 @@
 
         function initSystem() {
             document.getElementById('userStatus').innerText = `Logged in as: ${currentUser.uname} (${currentUser.role})`;
-            
-            // STRICT ROLE ACCESS CONTROL
             if(currentUser.role === 'read') {
                 document.getElementById('formSection').classList.add('hidden');
                 document.getElementById('superAdminSection').classList.add('hidden');
@@ -197,7 +195,6 @@
                 document.getElementById('formSection').classList.remove('hidden');
                 document.getElementById('superAdminSection').classList.add('hidden');
             }
-
             renderEngineerSelect();
             const grid = document.getElementById('serviceGrid');
             grid.innerHTML = services.map(s => `
@@ -224,6 +221,7 @@
         }
 
         function renderEngineerList() {
+            if(currentUser.role !== 'super') return;
             document.getElementById('engineerList').innerHTML = engineers.map((e, i) => `
                 <div class="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm">
                     <span class="font-bold text-slate-700">${e}</span>
@@ -243,7 +241,7 @@
         }
 
         function deleteEngineer(index) {
-            if(currentUser.role === 'read') return;
+            if(currentUser.role !== 'super') return;
             if(confirm("Remove this engineer?")) {
                 engineers.splice(index, 1);
                 localStorage.setItem('ops_engineers', JSON.stringify(engineers));
@@ -315,7 +313,28 @@
             const tbody = document.getElementById('dbBody');
             const now = new Date().getTime();
 
-            const filtered = db.filter(x => {
+            // Sorter Logic Implementation
+            const sortedDb = [...db].sort((a, b) => {
+                const aIsExpired = (a.expiry - now) <= 0 && !a.resolved;
+                const bIsExpired = (b.expiry - now) <= 0 && !b.resolved;
+
+                // 1. Expired Rule sobar upore
+                if (aIsExpired && !bIsExpired) return -1;
+                if (!aIsExpired && bIsExpired) return 1;
+
+                // 2. Active Rules (not resolved, not expired) chronologically
+                if (!a.resolved && !b.resolved) {
+                    return a.expiry - b.expiry;
+                }
+
+                // 3. Resolved rules sobar niche
+                if (a.resolved && !b.resolved) return 1;
+                if (!a.resolved && b.resolved) return -1;
+
+                return 0;
+            });
+
+            const filtered = sortedDb.filter(x => {
                 const matchesSearch = x.name.toLowerCase().includes(term);
                 const isExpired = (x.expiry - now) <= 0 && !x.resolved;
                 let matchesStatus = true;
@@ -329,8 +348,6 @@
             tbody.innerHTML = filtered.map((d, i) => {
                 const timeLeft = d.expiry - now;
                 const isExpired = timeLeft <= 0;
-                
-                // ACTION BUTTONS CONDITION
                 const actionButtons = currentUser.role !== 'read' ? `
                     <button onclick="promptRollback(${d.id})" class="${d.resolved ? 'text-emerald-500' : 'text-slate-400'} hover:bg-slate-50 p-2 rounded-xl"><i class="fas fa-check-circle"></i></button>
                     <button onclick="deleteEntry(${d.id})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fas fa-trash"></i></button>
