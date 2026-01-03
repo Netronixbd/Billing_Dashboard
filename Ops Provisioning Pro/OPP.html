@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ops Provisioning Pro | v2.6 Final Config</title>
+    <title>Ops Provisioning Pro | v2.8 Ultimate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -71,7 +71,7 @@
                             <input type="text" id="othersInput" class="w-full rounded-xl p-3 mt-2 hidden" placeholder="Name?">
                         </div>
                         <div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Executing Engineer</label>
-                            <select id="executedBy" class="w-full rounded-xl p-3 shadow-sm" required>
+                            <select id="executedBy" class="w-full rounded-xl p-3 shadow-sm engineer-select" required>
                                 <option value="">Select Engineer *</option>
                             </select>
                         </div>
@@ -94,9 +94,32 @@
                 </form>
             </section>
 
-            <div class="relative mb-6">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="searchClient" onkeyup="filterDatabase()" placeholder="Search client name..." class="w-full pl-12 pr-4 py-4 rounded-2xl shadow-sm border-none bg-white font-medium">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
+                <div class="relative md:col-span-6">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchClient" onkeyup="filterDatabase()" placeholder="Search client name..." class="w-full pl-12 pr-4 py-4 rounded-2xl shadow-sm border-none bg-white font-medium">
+                </div>
+                <div class="md:col-span-3">
+                    <select id="statusFilter" onchange="filterDatabase()" class="w-full bg-white px-6 py-4 rounded-2xl shadow-sm border-none font-bold text-slate-500 text-xs uppercase cursor-pointer">
+                        <option value="all">All Status</option>
+                        <option value="active">Active Only</option>
+                        <option value="expired">Expired Only</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="md:col-span-3">
+                    <select id="serviceTypeFilter" onchange="filterDatabase()" class="w-full bg-white px-6 py-4 rounded-2xl shadow-sm border-none font-bold text-indigo-600 text-xs uppercase cursor-pointer">
+                        <option value="all">All Service Types</option>
+                        <option value="IPT">IPT</option>
+                        <option value="GGC">GGC</option>
+                        <option value="FNA">FNA</option>
+                        <option value="BDIX">BDIX</option>
+                        <option value="CDN">CDN</option>
+                        <option value="AKAMAI">AKAMAI</option>
+                        <option value="PNI">PNI</option>
+                        <option value="BCDN">BCDN</option>
+                    </select>
+                </div>
             </div>
 
             <div class="glass-panel overflow-hidden mb-10">
@@ -124,7 +147,6 @@
                     </div>
                     <div id="userList" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
                 </section>
-
                 <section class="glass-panel p-8 border-2 border-emerald-100">
                     <h3 class="text-xl font-black text-emerald-600 uppercase mb-6 flex items-center gap-3"><i class="fas fa-user-tie"></i> Engineer Management</h3>
                     <div class="flex gap-4 mb-6">
@@ -143,7 +165,9 @@
         <div class="bg-white max-w-lg w-full rounded-3xl p-8 shadow-2xl border border-slate-200">
             <h3 id="modalTitle" class="text-2xl font-black text-slate-800 mb-6 uppercase tracking-tight">Provisioning Details</h3>
             <div id="modalContent" class="space-y-4 overflow-y-auto max-h-[60vh]"></div>
-            <button onclick="closeModal()" class="w-full mt-8 bg-slate-100 p-4 rounded-2xl font-bold text-slate-500 uppercase text-xs hover:bg-slate-200 transition-all">Close Window</button>
+            <div id="modalFooter" class="mt-8">
+                <button onclick="closeModal()" class="w-full bg-slate-100 p-4 rounded-2xl font-bold text-slate-500 uppercase text-xs hover:bg-slate-200 transition-all">Close Window</button>
+            </div>
         </div>
     </div>
 
@@ -190,10 +214,11 @@
             saveAndRender();
         }
 
-        // Engineer Management Functions
         function renderEngineerSelect() {
-            const select = document.getElementById('executedBy');
-            select.innerHTML = '<option value="">Select Engineer *</option>' + engineers.map(e => `<option value="${e}">${e}</option>`).join('');
+            const selects = document.querySelectorAll('.engineer-select');
+            selects.forEach(select => {
+                select.innerHTML = '<option value="">Select Engineer *</option>' + engineers.map(e => `<option value="${e}">${e}</option>`).join('');
+            });
         }
 
         function renderEngineerList() {
@@ -257,6 +282,7 @@
                 expiry: expiryTime,
                 reason: document.getElementById('reason').value,
                 resolved: false,
+                resolvedBy: null,
                 created: new Date().toLocaleString()
             };
             db.unshift(newEntry);
@@ -279,12 +305,34 @@
 
         function filterDatabase() {
             const term = document.getElementById('searchClient').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const sType = document.getElementById('serviceTypeFilter').value;
             const tbody = document.getElementById('dbBody');
             const now = new Date().getTime();
-            tbody.innerHTML = db.filter(x => x.name.toLowerCase().includes(term)).map((d, i) => {
+
+            const filtered = db.filter(x => {
+                const matchesSearch = x.name.toLowerCase().includes(term);
+                const isExpired = (x.expiry - now) <= 0 && !x.resolved;
+                
+                // Status Filter Logic
+                let matchesStatus = true;
+                if (status === 'active') matchesStatus = !x.resolved && !isExpired;
+                else if (status === 'expired') matchesStatus = isExpired;
+                else if (status === 'completed') matchesStatus = x.resolved;
+
+                // Service Type Filter Logic
+                let matchesService = true;
+                if (sType !== 'all') {
+                    matchesService = x.services.some(s => s.name === sType);
+                }
+
+                return matchesSearch && matchesStatus && matchesService;
+            });
+
+            tbody.innerHTML = filtered.map((d, i) => {
                 const timeLeft = d.expiry - now;
                 const isExpired = timeLeft <= 0;
-                return `<tr class="${d.resolved ? 'opacity-50 bg-slate-50' : (isExpired ? 'alarm-row' : '')}"><td class="px-6 py-5"><div class="font-bold text-slate-800">${d.name}</div><div class="text-[10px] text-slate-400 uppercase font-black">${d.engineer}</div></td><td class="px-6 py-5"><div class="flex flex-wrap gap-1">${d.services.map(s => `<div class="flex items-center gap-1 bg-white border border-slate-100 rounded-lg px-2 py-1 shadow-sm"><span class="text-[9px] font-bold text-indigo-600">${s.name}</span><span class="w-1 h-1 bg-slate-200 rounded-full"></span><span class="text-[9px] font-black ${s.mode === 'Uncap' ? 'text-emerald-500' : 'text-amber-500'} uppercase">${s.mode}</span></div>`).join('')}</div></td><td class="px-6 py-5 text-center">${d.resolved ? `<span class="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[10px] font-black">COMPLETED</span>` : `<div class="font-mono font-bold text-sm ${isExpired ? 'text-rose-600' : 'text-indigo-600'}">${isExpired ? 'EXPIRED' : formatTime(timeLeft)}</div>`}</td><td class="px-6 py-5 text-center flex justify-center gap-2"><button onclick="viewDetails(${d.id})" class="text-indigo-500 hover:bg-indigo-50 p-2 rounded-xl"><i class="fas fa-eye"></i></button>${currentUser.role !== 'read' ? `<button onclick="toggleResolve(${d.id})" class="${d.resolved ? 'text-emerald-500' : 'text-slate-400'} hover:bg-slate-50 p-2 rounded-xl"><i class="fas fa-check-circle"></i></button><button onclick="deleteEntry(${d.id})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`;
+                return `<tr class="${d.resolved ? 'opacity-50 bg-slate-50' : (isExpired ? 'alarm-row' : '')}"><td class="px-6 py-5"><div class="font-bold text-slate-800">${d.name}</div><div class="text-[10px] text-slate-400 uppercase font-black">${d.engineer}</div></td><td class="px-6 py-5"><div class="flex flex-wrap gap-1">${d.services.map(s => `<div class="flex items-center gap-1 bg-white border border-slate-100 rounded-lg px-2 py-1 shadow-sm"><span class="text-[9px] font-bold text-indigo-600">${s.name}</span><span class="w-1 h-1 bg-slate-200 rounded-full"></span><span class="text-[9px] font-black ${s.mode === 'Uncap' ? 'text-emerald-500' : 'text-amber-500'} uppercase">${s.mode}</span></div>`).join('')}</div></td><td class="px-6 py-5 text-center">${d.resolved ? `<div class="flex flex-col"><span class="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[10px] font-black">COMPLETED</span><span class="text-[8px] text-slate-400 mt-1 uppercase">BY: ${d.resolvedBy || 'N/A'}</span></div>` : `<div class="font-mono font-bold text-sm ${isExpired ? 'text-rose-600' : 'text-indigo-600'}">${isExpired ? 'EXPIRED' : formatTime(timeLeft)}</div>`}</td><td class="px-6 py-5 text-center flex justify-center gap-2"><button onclick="viewDetails(${d.id})" class="text-indigo-500 hover:bg-indigo-50 p-2 rounded-xl"><i class="fas fa-eye"></i></button>${currentUser.role !== 'read' ? `<button onclick="promptRollback(${d.id})" class="${d.resolved ? 'text-emerald-500' : 'text-slate-400'} hover:bg-slate-50 p-2 rounded-xl"><i class="fas fa-check-circle"></i></button><button onclick="deleteEntry(${d.id})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-xl"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`;
             }).join('');
         }
 
@@ -295,6 +343,7 @@
 
         function viewDetails(id) {
             const d = db.find(x => x.id === id);
+            const expiryDate = new Date(d.expiry).toLocaleString();
             document.getElementById('modalTitle').innerText = d.name;
             document.getElementById('modalContent').innerHTML = `
                 <div class="bg-indigo-600 text-white p-5 rounded-3xl mb-4 shadow-lg shadow-indigo-100">
@@ -306,9 +355,9 @@
                         <p class="text-[10px] uppercase font-bold text-slate-400 mb-1">Provisioned By</p>
                         <p class="text-sm font-black text-slate-700">${d.engineer}</p>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <p class="text-[10px] uppercase font-bold text-slate-400 mb-1">Created At</p>
-                        <p class="text-sm font-black text-slate-700">${d.created}</p>
+                    <div class="p-4 bg-rose-50 rounded-2xl border border-rose-100">
+                        <p class="text-[10px] uppercase font-bold text-rose-400 mb-1">Exact Expiry Time</p>
+                        <p class="text-sm font-black text-rose-700">${expiryDate}</p>
                     </div>
                 </div>
                 <div class="space-y-3">
@@ -333,11 +382,35 @@
             document.getElementById('modal').classList.remove('hidden');
         }
 
-        function toggleResolve(id) {
+        function promptRollback(id) {
+            const entry = db.find(x => x.id === id);
+            document.getElementById('modalTitle').innerText = entry.resolved ? "Re-activate Rule?" : "Confirm Rollback";
+            document.getElementById('modalContent').innerHTML = `
+                <div class="p-6 bg-amber-50 rounded-3xl border border-amber-100 text-center">
+                    <i class="fas fa-exclamation-triangle text-4xl text-amber-500 mb-4"></i>
+                    <p class="text-sm font-bold text-slate-700 mb-4">Are you sure you want to ${entry.resolved ? 'RE-ACTIVATE' : 'ROLLBACK'} this provisioning for <b>${entry.name}</b>?</p>
+                    <div class="text-left">
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Executing Rollback Engineer *</label>
+                        <select id="rollbackEng" class="w-full rounded-xl p-4 mt-1 engineer-select shadow-sm" required>
+                             <option value="">Select Engineer *</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="executeToggle(${id})" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mt-4">Confirm Action</button>
+            `;
+            renderEngineerSelect();
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function executeToggle(id) {
+            const eng = document.getElementById('rollbackEng').value;
+            if(!eng) return alert("Engineer Name is mandatory!");
             const entry = db.find(x => x.id === id);
             entry.resolved = !entry.resolved;
-            auditLogs.unshift({ action: entry.resolved ? 'Rollback/Resolved' : 'Re-activated', client: entry.name, user: currentUser.uname, time: new Date().toLocaleString() });
+            entry.resolvedBy = eng;
+            auditLogs.unshift({ action: entry.resolved ? 'Rollback/Resolved' : 'Re-activated', client: entry.name, user: eng, time: new Date().toLocaleString() });
             saveAndRender();
+            closeModal();
         }
 
         function deleteEntry(id) { 
